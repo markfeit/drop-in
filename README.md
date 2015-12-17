@@ -19,6 +19,7 @@ Foo Line 2
 Bar Line 1
 Bar Line 2
 #END-added
+```
 
 This process may be repeated multiple times to add additional named segments to the file.
 
