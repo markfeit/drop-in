@@ -1,0 +1,206 @@
+#!/usr/bin/perl -w
+#
+# drop-in - Drop a marked segment of text in at the end of a file or
+# replace an existing segment marked by a key.
+#
+# Each segment in the file is marked by a commented BEGIN and END tag.
+# For example:
+#
+#	text
+#	#BEGIN-FOO
+#	Foo Line 1
+#	Foo Line 2
+#	#END-FOO
+#	text
+#
+# Usage: drop-in [options] key addfile inoutfile
+#
+# Where:
+#
+#	key		Name key for segment.  Using different keys
+#			allows multiple segments in a file.
+#	addfile		Name of file containing text to add
+#	inoutfile	Name of file to alter.  Using "-" will take
+#			input from stdin and place output on stdout.
+#
+# Options:
+#
+#	-c comment	String to mark a comment at the beginning of
+#			a line.  Defaults to "#".
+#	-d		Debug on stderr
+#	-f		Find segment in input, exit 0/1 if present/not present
+#	-n		Don't add a comment with the drop-in date and time
+#	-r		Remove dropped-in text instead of inserting it
+#	-t		Add new segment at the top of the file after the first
+#			non-comment line
+#
+# Todo:
+#	Make compatible with large files.
+#
+
+
+require 5.000;
+use strict;
+use File::Basename;
+use Getopt::Long qw (&GetOptions);
+require "ctime.pl";
+
+
+my ($whoami);
+($whoami = $0) =~ s|^.*/||;
+
+my $opt_comment = "#";
+my $opt_debug = 0;
+my $opt_find = 0;
+my $opt_notime = 0;
+my $opt_remove = 0;
+my $opt_top = 0;
+
+$Getopt::Long::order = $Getopt::Long::REQUIRE_ORDER;
+
+GetOptions(
+	   "comment=s" => \$opt_comment,
+	   "debug" => \$opt_debug,
+	   "find" => \$opt_find,
+	   "notime" => \$opt_notime,
+	   "remove" => \$opt_remove,
+	   "top" => \$opt_top,
+	   );
+
+sub debug { warn @_, "\n" if $opt_debug };
+sub barf { warn @_, "\n"; exit 1; };
+
+barf "Usage: $whoami [-dfnrt] [-c comment] key addfile inoutfile"
+    if ($Getopt::Long::error || ($#ARGV != 2));
+
+
+# ---------------------------------------------------------------------------
+
+my ($key, $addfile, $inoutfile) = @ARGV;
+
+undef $/; # Read things in one fell swoop.  Dangerous for large files.
+
+# ---------------------------------------------------------------------------
+
+# Read the original text
+
+if ( $inoutfile =~ /^-$/ )
+{
+    open( INPUT, "<&STDIN" )
+	|| barf "Can't dupe standard input: $!\n";
+}
+else
+{
+    open( INPUT, $inoutfile )
+	|| barf "Can't open $inoutfile: $!\n";
+}
+
+$_ = <INPUT>;
+close INPUT;
+debug "Input file $inoutfile read: $_";
+
+# ---------------------------------------------------------------------------
+
+# If we're just finding, we can just examine the input text
+
+if ( $opt_find ) {
+
+    my $inside = 0;
+    my @results = grep {
+	my $ret = 0;
+	if ( $inside ) {
+	    if ( /^${opt_comment}END-${key}$/ ) {
+	        $ret = 1;
+	    }
+        } else {
+	    if ( /^${opt_comment}BEGIN-${key}$/ ) {
+                $inside = 1;
+            }
+        }
+
+        $ret;
+
+    } split /\n/, $_;
+
+    exit ( @results != 1 );
+}
+
+
+
+# ---------------------------------------------------------------------------
+
+# Read the additional text
+open ADD, $addfile
+    || barf "Can't open $addfile: $!\n";
+my($add) = <ADD>;
+close ADD;
+
+# ---------------------------------------------------------------------------
+
+# Make the substitutions.  If the segment already exists, replace its
+# innards.  Otherwise, tack it onto the end.
+
+unless ( $opt_notime || (! defined $add) )
+{
+    $add = "${opt_comment}Dropped in " . ctime(time) . "$add";
+}
+
+my $rtext = ( $opt_remove ? ""
+	     : "${opt_comment}BEGIN-$key\n$add${opt_comment}END-$key" );
+
+if ( /\n?${opt_comment}BEGIN-$key\n.*\n${opt_comment}END-$key\n/s )
+{
+    debug "Replacing/Removing";
+    s/(${opt_comment}BEGIN-$key\n).*(${opt_comment}END-$key\n)/$rtext\n/s;
+}
+else
+{
+    if ( $opt_top ) {
+	debug "Adding at top";
+
+	my @lastlines = split /\n/, $_;
+	my @firstlines = ();
+
+	# Hold leading blank or comment lines separately.  Treat lines
+	# that look like <comment-char>BEGIN-xxx as non-comments so we
+	# don't insert ourselves in someone else's block.
+	while ( @lastlines && ($lastlines[0] =~ /^\s*($opt_comment(?!BEGIN).*)?$/) ) {
+	    push @firstlines, shift @lastlines;
+	}
+
+	$_ = join "\n", (@firstlines, $rtext, @lastlines, '');
+    } else {
+	debug "Adding at end";
+	$_ = $_ . ( (/\n$/s || /^$/) ? "" : "\n" ) . "$rtext\n";
+
+    }
+}
+
+# ---------------------------------------------------------------------------
+
+debug "New Text: = $_ =";
+
+# Dump the results to the output file
+
+if ( $inoutfile =~ /^-$/ )
+{
+    open( OUTPUT, ">&STDOUT" )
+	|| barf "Can't dupe standard output: $!\n";
+}
+else
+{
+    unlink $inoutfile;
+    open( OUTPUT, ">$inoutfile" )
+	|| barf "Can't open $inoutfile: $!\n";
+}
+
+print OUTPUT $_;
+close OUTPUT
+    || barf "Can't close $addfile after write: $!\n";
+
+debug "Output file $inoutfile written:";
+system("cat $inoutfile") if $opt_debug;
+
+# Buh-bye...
+
+exit 0;

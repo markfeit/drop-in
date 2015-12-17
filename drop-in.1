@@ -1,0 +1,96 @@
+.\" drop-in man page
+.if !\n(.g \{\
+.	if !\w|\*(lq| \{\
+.		ds lq ``
+.		if \w'\(lq' .ds lq "\(lq
+.	\}
+.	if !\w|\*(rq| \{\
+.		ds rq ''
+.		if \w'\(rq' .ds rq "\(rq
+.	\}
+.\}
+.de Id
+.ds Dt \\$4
+..
+.TH DROP-IN 1
+.SH NAME
+drop-in \- Add, replace or remove blocks of text in files
+.SH SYNOPSIS
+.B drop-in
+.I [ OPTIONS ]
+.I KEY
+.I ADDFILE
+.I EDITFILE
+
+.SH DESCRIPTION
+.PP
+This program adds, replaces or removes specially-marked segments in a
+text file.
+
+Each segment is marked by a keyed, commented BEGIN and END tag:
+
+  ...text from file...
+  #BEGIN-foo
+  Foo Line 1
+  Foo Line 2
+  #END-foo
+  ...text from file...
+
+By default, drop-in will add or replace a segment identified by
+.I KEY
+to the specified file but can also remove it through the use of the
+.I -r
+switch.
+
+.SH ARGUMENTS
+
+.IR KEY
+The name of the key to use in identifying the dropped-in block.
+
+.IR ADDFILE
+The path to the file to add.  Use
+.I /dev/null
+with the -r switch.
+
+.IR EDITFILE
+The path to the file to edit.  If '-', the file will be read from the
+standard input and written to the standard output.
+
+.SH OPTIONS
+.TP
+.BI -c\ comment
+Use
+.I comment
+as the comment character.  The default is "#".
+
+.TP
+.BI -d
+Debug to standard error
+
+.TP
+.BI -f
+Find the segment in
+.I EDITFILE
+and exit 0 if present, 1 otherwise.  No
+.I ADDFILE
+is read and no changes are made to
+.I EDITFILE
+
+.TP
+.BI -n
+Don't add a comment with the date and time the block was
+dropped in.
+
+
+.TP
+.BI -r
+Remove the dropped-in block instead of inserting it.
+
+
+.TP
+.BI -t
+If inserting a segment (i.e., the
+.BI -r
+switch is not in effect) and no same-named segment exists, insert the
+segment at the top of the file after the first non-blank, non-comment
+line.
