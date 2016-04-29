@@ -43,7 +43,6 @@ require 5.000;
 use strict;
 use File::Basename;
 use Getopt::Long qw (&GetOptions);
-require "ctime.pl";
 
 
 my ($whoami);
@@ -142,11 +141,11 @@ close ADD;
 
 unless ( $opt_notime || (! defined $add) )
 {
-    $add = "${opt_comment}Dropped in " . ctime(time) . "$add";
+    $add = "${opt_comment}Dropped in " . localtime(time) . "\n" . $add;
 }
 
 my $rtext = ( $opt_remove ? ""
-	     : "${opt_comment}BEGIN-$key\n$add${opt_comment}END-$key" );
+	     : "${opt_comment}BEGIN-$key\n${add}${opt_comment}END-$key" );
 
 if ( /\n?${opt_comment}BEGIN-$key\n.*\n${opt_comment}END-$key\n/s )
 {
