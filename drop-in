@@ -150,7 +150,7 @@ my $rtext = ( $opt_remove ? ""
 if ( /\n?${opt_comment}BEGIN-$key\n.*\n${opt_comment}END-$key\n/s )
 {
     debug "Replacing/Removing";
-    s/(${opt_comment}BEGIN-$key\n).*(${opt_comment}END-$key\n)/$rtext\n/s;
+    s/(${opt_comment}BEGIN-$key\n).*(${opt_comment}END-$key\n)/$rtext/s;
 }
 else
 {
