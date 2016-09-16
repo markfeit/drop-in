@@ -96,7 +96,7 @@ else
 
 $_ = <INPUT>;
 close INPUT;
-debug "Input file $inoutfile read: $_";
+debug "Input file $inoutfile read: '''$_'''";
 
 # ---------------------------------------------------------------------------
 
@@ -152,7 +152,7 @@ if ( /\n?${opt_comment}BEGIN-$key\n.*\n${opt_comment}END-$key\n/s )
     debug "Replacing/Removing";
     s/(${opt_comment}BEGIN-$key\n).*(${opt_comment}END-$key\n)/$rtext/s;
 }
-else
+elsif ( ! $opt_remove )
 {
     if ( $opt_top ) {
 	debug "Adding at top";
@@ -177,7 +177,7 @@ else
 
 # ---------------------------------------------------------------------------
 
-debug "New Text: = $_ =";
+debug "New Text: '''$_'''";
 
 # Dump the results to the output file
 
