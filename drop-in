@@ -150,6 +150,8 @@ my $rtext = ( $opt_remove ? ""
 if ( /\n?${opt_comment}BEGIN-$key\n.*\n${opt_comment}END-$key\n/s )
 {
     debug "Replacing/Removing";
+    chomp $rtext;
+    $rtext .= "\n"; #make sure rtext has just one new line after it
     s/(${opt_comment}BEGIN-$key\n).*(${opt_comment}END-$key\n)/$rtext/s;
 }
 elsif ( ! $opt_remove )
