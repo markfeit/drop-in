@@ -1,0 +1,50 @@
+#!/bin/sh
+
+FILE=/tmp/file
+
+#DEBUG=-d
+
+cat > "${FILE}" << EOF
+#
+# Blah
+#
+one
+two
+EOF
+
+echo INITIAL:
+cat "${FILE}"
+echo
+
+echo DROP-IN STANDARD OUTPUT:
+./drop-in ${DEBUG} -n stuff /etc/issue - <<EOF
+Line 1
+Line 2
+Line 3
+EOF
+echo
+
+echo DROP-IN TOP:
+./drop-in ${DEBUG} -n -t stuff - "${FILE}" <<EOF
+This was dropped in
+EOF
+cat "${FILE}"
+echo
+
+echo REMOVE TOP:
+./drop-in ${DEBUG} -r stuff /dev/null "${FILE}"
+cat "${FILE}"
+echo
+
+echo DROP-IN BOTTOM:
+./drop-in ${DEBUG} -n stuff - "${FILE}" <<EOF
+This was dropped in
+EOF
+cat "${FILE}"
+echo
+
+echo REMOVE BOTTOM:
+./drop-in ${DEBUG} -r stuff /dev/null "${FILE}"
+cat "${FILE}"
+
+rm -f "${FILE}"
