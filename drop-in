@@ -41,7 +41,8 @@
 
 require 5.000;
 use strict;
-use File::Basename;
+use File::Copy;
+use File::Temp;
 use Getopt::Long qw (&GetOptions);
 
 
@@ -183,24 +184,35 @@ debug "New Text: '''$_'''";
 
 # Dump the results to the output file
 
+my $output;
+
 if ( $inoutfile =~ /^-$/ )
 {
-    open( OUTPUT, ">&STDOUT" )
+    open( $output, ">&STDOUT" )
 	|| barf "Can't dupe standard output: $!\n";
 }
 else
 {
     unlink $inoutfile;
-    open( OUTPUT, ">$inoutfile" )
-	|| barf "Can't open $inoutfile: $!\n";
+    $output = new File::Temp(
+	UNLINK => 1,
+	TEMPLATE => "$inoutfile.XXXXXX"
+	);
+    $output || barf "Can't open temporary file: $!\n";
 }
 
-print OUTPUT $_;
-close OUTPUT
-    || barf "Can't close $addfile after write: $!\n";
+debug "Output is to $output";
+print $output $_;
 
-debug "Output file $inoutfile written:";
-system("cat $inoutfile") if $opt_debug;
+if ( $inoutfile !~ /^-$/ )
+{
+    debug "Moving $output -> $inoutfile";
+    move($output, $inoutfile);
+    debug "Output file $inoutfile written:";
+    system("cat $inoutfile") if $opt_debug;
+}
+
+$output->close();
 
 # Buh-bye...
 
