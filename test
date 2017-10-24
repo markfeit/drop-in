@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 
 FILE=/tmp/file
 
@@ -12,16 +12,16 @@ one
 two
 EOF
 
-echo INITIAL:
-cat "${FILE}"
-echo
-
 echo DROP-IN STANDARD OUTPUT:
 ./drop-in ${DEBUG} -n stuff /etc/issue - <<EOF
 Line 1
 Line 2
 Line 3
 EOF
+echo
+
+echo INITIAL FILE:
+cat "${FILE}"
 echo
 
 echo DROP-IN TOP:
@@ -43,8 +43,16 @@ EOF
 cat "${FILE}"
 echo
 
+echo REPLACE BOTTOM:
+./drop-in ${DEBUG} -n stuff - "${FILE}" <<EOF
+This is a replacement
+EOF
+cat "${FILE}"
+echo
+
 echo REMOVE BOTTOM:
 ./drop-in ${DEBUG} -r stuff /dev/null "${FILE}"
 cat "${FILE}"
+
 
 rm -f "${FILE}"

@@ -84,15 +84,17 @@ undef $/; # Read things in one fell swoop.  Dangerous for large files.
 
 # Read the original text
 
-if ( $inoutfile =~ /^-$/ )
+my $standard_io = $inoutfile eq '-';
+
+if ( $standard_io )
 {
     open( INPUT, "<&STDIN" )
-	|| barf "Can't dupe standard input: $!\n";
+	or barf "Can't dupe standard input: $!\n";
 }
 else
 {
     open( INPUT, $inoutfile )
-	|| barf "Can't open $inoutfile: $!\n";
+	or barf "Can't open $inoutfile: $!\n";
 }
 
 $_ = <INPUT>;
@@ -131,7 +133,7 @@ if ( $opt_find ) {
 
 # Read the additional text
 open ADD, $addfile
-    || barf "Can't open $addfile: $!\n";
+    or barf "Can't open $addfile: $!\n";
 my($add) = <ADD>;
 close ADD;
 
@@ -151,6 +153,9 @@ my $rtext = ( $opt_remove ? ""
 if ( /\n?${opt_comment}BEGIN-$key\n.*\n${opt_comment}END-$key\n/s )
 {
     $rtext =~ s/\n*$//;
+    if ( $rtext ne "" ) {
+	$rtext .= "\n";
+    }
     debug "Replacing/Removing '''$rtext'''";
     s/(${opt_comment}BEGIN-$key\n).*(${opt_comment}END-$key\n)/$rtext/s;
 }
@@ -184,34 +189,48 @@ debug "New Text: '''$_'''";
 # Dump the results to the output file
 
 my $output;
+my @infile_stat;
 
-if ( $inoutfile =~ /^-$/ )
+if ( $standard_io )
 {
     open( $output, ">&STDOUT" )
-	|| barf "Can't dupe standard output: $!\n";
+	or barf "Can't dupe standard output: $!\n";
 }
 else
 {
-    unlink $inoutfile;
+    @infile_stat = stat($inoutfile);
+    @infile_stat or barf "Can't stat $inoutfile: $!\n";
+
     $output = new File::Temp(
-	UNLINK => 1,
-	TEMPLATE => "$inoutfile.XXXXXX"
+	UNLINK => 0,
+	TEMPLATE => "$inoutfile.XXXXXX",
 	);
-    $output || barf "Can't open temporary file: $!\n";
+    $output or barf "Can't open temporary file: $!\n";
+    debug "Output is to temporary file $output";
 }
 
-debug "Output is to $output";
 print $output $_;
 
-if ( $inoutfile !~ /^-$/ )
+if ( ! $standard_io )
 {
-    debug "Moving $output -> $inoutfile";
-    move($output, $inoutfile);
+    my $output_path = $output->filename;
+    $output->close();
+
+    chmod $infile_stat[2], $output_path
+	or barf "Unable to set mode of $output_path: $!\n";
+    chown $infile_stat[4], $infile_stat[5], $output_path
+	or barf "Unable to set ownership of $output_path: $!\n";
+
+    debug "Moving $output_path -> $inoutfile";
+    move($output_path, $inoutfile)
+	or barf "Failed to move $output_path to $inoutfile: $!\n";
+
     debug "Output file $inoutfile written:";
+    system("ls -alh $inoutfile") if $opt_debug;
     system("cat $inoutfile") if $opt_debug;
 }
 
-$output->close();
+
 
 # Buh-bye...
 
